@@ -133,6 +133,3 @@ dist
 .idea/
 *.iml
 *.iws
-
-#test
-src/app/api/*
