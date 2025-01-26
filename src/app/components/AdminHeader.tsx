@@ -94,7 +94,7 @@ export default function AdminHeader({ toggleSidebar }: { toggleSidebar: () => vo
                 </button>
                 <h1 className="text-lg font-bold">{title}</h1>
             </div>
-            <div className="absolute right-6">
+            <div className="absolute right-6 z-10">
                 {userEmail ? (
                     <div ref={menuAreaRef}>
                         <button
