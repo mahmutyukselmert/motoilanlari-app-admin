@@ -20,23 +20,27 @@ interface User {
 }
 
 interface Ad {
-    photoUrls: string[];
+    id: string;
     title: string;
+    price: number;
+    photoUrls: string[];
+    createdAt: Timestamp;
+    status: "publish" | "pending" | "rejected" | "draft";
     brand: string;
+    city: string;
     modelYear: number;
-    model: string;
-    transmission: string;
     enginePower: number;
     km: number;
-    price: number;
+    description: string;
+    userId: string;
+    phoneNumber: string;
+    email: string;
+    userName: string;
+    transmission: string;
     fuelType: string;
-    city: string;
     hasTradeIn: boolean;
     hasDamage: boolean;
-    description: string;
     isNumberView: boolean;
-    createdAt: Timestamp;
-    userId: string;
 }
 
 const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
@@ -168,13 +172,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                         )}
                         {/* İlan bilgileri */}
                         <p className={'mb-1'}><strong>Marka:</strong> {adDetails.brand}</p>
-                        <p className={'mb-1'}><strong>Model:</strong> {adDetails.model}</p>
+                        <p className={'mb-1'}><strong>Model:</strong> {adDetails.modelYear}</p>
                         <p className={'mb-1'}><strong>Fiyat:</strong> {formatPrice(adDetails.price)} TL</p>
                         <p className={'mb-1'}><strong>Model Yılı:</strong> {adDetails.modelYear}</p>
-                        <p className={'mb-1'}><strong>Yakıt
-                            Türü:</strong> {adDetails.fuelType == 'benzin' ? 'Benzin' : 'Elektrik'}</p>
-                        <p className={'mb-1'}><strong>Vites
-                            Türü:</strong> {adDetails.transmission == 'manuel' ? 'Manuel' : 'Otomatik'}</p>
+                        <p className={'mb-1'}><strong>Yakıt Türü:</strong> {adDetails.fuelType == 'benzin' ? 'Benzin' : 'Elektrik'}</p>
+                        <p className={'mb-1'}><strong>Vites Türü:</strong> {adDetails.transmission == 'manuel' ? 'Manuel' : 'Otomatik'}</p>
                         <p className={'mb-1'}><strong>Motor Gücü (Cc):</strong> {adDetails.enginePower} </p>
                         <p className={'mb-1'}><strong>Km:</strong> {adDetails.km} km</p>
                         <p className={'mb-1'}><strong>Hasar Kaydı:</strong> {adDetails.hasDamage ? 'Var' : 'Yok'}</p>
@@ -182,6 +184,13 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                         <p className={'mb-1'}><strong>Şehir:</strong> {adDetails.city}</p>
                         <p className={'mb-1'}><strong>Telefon Numarası Görünürlük Durumu:</strong> {adDetails.isNumberView == false ? 'Gizli' : 'Açık' }</p>
                         <p className={'mb-1'}><strong>Açıklama:</strong> {adDetails.description}</p>
+                        <p className={'mb-1'}>
+                            <strong>Durum: </strong>
+                            <span
+                                className={`px-2 py-1 rounded text-white ${adDetails.status === "publish" ? "bg-green-500" : adDetails.status === "pending" ? "bg-yellow-500" : adDetails.status === "draft" ? "bg-gray-500" : "bg-red-500"}`}>
+                                {adDetails.status === "publish" ? "Yayında" : adDetails.status === "pending" ? "Bekliyor" : adDetails.status === "draft" ? "Taslak" : "Reddedildi"}
+                            </span>
+                        </p>
                     </div>
                 </div>
                 <div className="mt-4 px-4 py-2 flex justify-end">
