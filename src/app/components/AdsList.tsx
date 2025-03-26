@@ -23,6 +23,7 @@ interface Ad {
     enginePower: number;
     km: number;
     description: string;
+    thumbnailUrl: string | null;
 }
 
 export default function AdsList() {
