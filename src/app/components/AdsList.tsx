@@ -144,7 +144,7 @@ export default function AdsList() {
                     {ads.map((ad) => (
                         <tr key={ad.id} className="text-center">
                             <td className="px-1 py-1 border text-center justify-center flex">
-                                <Image src={ad.photoUrls[0]} alt={ad.title} className="w-16 h-16 object-cover rounded" height={200} width={200} />
+                                <Image src={ad.thumbnailUrl ? ad.thumbnailUrl : ad.photoUrls[0] || ""} alt={ad.title} className="w-16 h-16 object-cover rounded" height={200} width={200} />
                             </td>
                             <td className="px-4 py-2 border">{ad.title}</td>
                             <td className="px-4 py-2 border">{ad.price} TL</td>
@@ -254,16 +254,13 @@ export default function AdsList() {
                                     <h3 className="text-lg font-bold">{ad.title}</h3>
                                     <p className="text-gray-700">{ad.price} TL</p>
                                     <p className="text-sm text-gray-500">{formatDate(ad.createdAt)}</p>
-                                    <span
-                                        className={`px-2 py-1 rounded text-white ${ad.status === "publish" ? "bg-green-500" : ad.status === "pending" ? "bg-yellow-500" : ad.status === "draft" ? "bg-gray-500" : "bg-red-500"}`}>
-                                        {ad.status === "publish" ? "Yayında" : ad.status === "pending" ? "Bekliyor" : ad.status === "draft" ? "Taslak" : "Reddedildi"}
-                                    </span>
+                                    
                                 </div>
                             </div>
                             <div className="flex justify-between items-center mt-4">
-                    <span className={`px-2 py-1 rounded text-white ${ad.status === "publish" ? "bg-green-500" : ad.status === "pending" ? "bg-yellow-500" : ad.status === "draft" ? "bg-gray-500" : "bg-red-500"}`}>
-                        {ad.status === "publish" ? "Yayında" : ad.status === "pending" ? "Bekliyor" : ad.status === "draft" ? "Taslak" : "Reddedildi"}
-                    </span>
+                                <span className={`px-2 py-1 rounded text-white ${ad.status === "publish" ? "bg-green-500" : ad.status === "pending" ? "bg-yellow-500" : ad.status === "draft" ? "bg-gray-500" : "bg-red-500"}`}>
+                                    {ad.status === "publish" ? "Yayında" : ad.status === "pending" ? "Bekliyor" : ad.status === "draft" ? "Taslak" : "Reddedildi"}
+                                </span>
                                 <div className="flex space-x-2">
                                     <div className="relative inline-block text-left">
                                         <div>
@@ -278,7 +275,7 @@ export default function AdsList() {
                                                     });
                                                     document.getElementById(`dropdown-mobile-${ad.id}`)?.classList.toggle('hidden');
                                                 }}
-                                                className="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-3 py-1 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+                                                className="inline-flex justify-center align-center items-center h-8 rounded-md border border-gray-300 shadow-sm px-3 py-1 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
                                                 id={`dropdown-button-mobile-${ad.id}`}
                                                 aria-expanded="true" aria-haspopup="true">
                                                 Durum
@@ -336,7 +333,18 @@ export default function AdsList() {
                                             </div>
                                         </div>
                                     </div>
+                                    {/* İnceleme */}
+                                    <div>
+                                        <button
+                                            onClick={() => openModal(ad.id)}
+                                            className="bg-blue-500 text-white px-2 py-1 h-8 rounded hover:bg-blue-600"
+                                        >
+                                            <FontAwesomeIcon icon={faSearch}></FontAwesomeIcon>
+                                        </button>
+                                    </div>
+                                    {/* İnceleme */}
                                 </div>
+                                
                             </div>
                         </div>
                     ))}
