@@ -6,7 +6,7 @@ import { db } from "@/lib/firebaseConfig";
 import {collection, getDocs, query, updateDoc, doc, orderBy, limit, startAfter, Timestamp, where} from "firebase/firestore";
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {faSearch, faChevronDown, faSort, faSortUp, faSortDown, faFilter} from '@fortawesome/free-solid-svg-icons';
+import {faSearch, faChevronDown, faSort, faSortUp, faSortDown} from '@fortawesome/free-solid-svg-icons';
 
 import Modal from "./AdModal";
 
