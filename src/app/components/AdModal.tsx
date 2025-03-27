@@ -82,10 +82,23 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
 
     // Eğer adDetails mevcutsa ilk fotoğrafı seç
     useEffect(() => {
-        if (adDetails && adDetails.photoUrls.length > 0) {
-            setSelectedImage(adDetails.photoUrls[0]);
+        setSelectedImage('/placeholder.jpg');
+        if (adDetails && adDetails.photoUrls?.length >= 1) {
+            if( adDetails.photoUrls[0] != null && adDetails.photoUrls[0].length > 10 ) {
+                setSelectedImage(adDetails.photoUrls[0]);
+            }
         }
     }, [adDetails]);
+
+    // Geçersiz URL kontrolü için yardımcı fonksiyon
+    const getValidImageUrl = (url: string | null | undefined): string => {
+        if (!url) return '/placeholder.jpg';
+        // file:// ile başlayan URL'leri veya geçersiz URL'leri kontrol et
+        if (url.startsWith('file://') || url.includes('/data/user/0/')) {
+            return '/placeholder.jpg';
+        }
+        return url;
+    };
 
     if (!isOpen || !adDetails) return null; // Modal açık değilse veya adDetails yüklenmemişse render etmiyoruz
 
@@ -126,12 +139,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                     <div className="md:w-2/4 md:pr-3 sm:w-full sm:pr-0 pb-3">
                         <div>
                             <Image
-                                src={selectedImage || adDetails.photoUrls[0]} // Eğer selectedImage varsa onu göster, yoksa ilk görseli göster
+                                src={getValidImageUrl(selectedImage)}
                                 alt={adDetails.title}
                                 width={400}
                                 height={200}
-                                layout="intrinsic"
-                                className="w-full h-full object-cover rounded-lg"
+                                className="w-full h-auto object-contain rounded-lg shadow-lg"
                             />
                         </div>
                         {/* Küçük görseller */}
@@ -139,14 +151,12 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                             {adDetails.photoUrls.map((url: string, index: number) => (
                                 <Image
                                     key={index}
-                                    src={url}
+                                    src={getValidImageUrl(url)}
                                     alt={`${adDetails.title} ${index}`}
                                     width={400}
                                     height={200}
-                                    layout="intrinsic"
-                                    className="w-1/4 h-auto object-cover rounded-lg cursor-pointer"
-                                    title={'Büyütmek için üzerine tıklayın.'}
-                                    onClick={() => handleImageClick(url)} // Tıklama ile görseli seç
+                                    className={`w-16 h-16 object-cover rounded ${selectedImage === url ? 'border-2 border-blue-500' : ''}`}
+                                    onClick={() => handleImageClick(url)}
                                 />
                             ))}
                         </div>
