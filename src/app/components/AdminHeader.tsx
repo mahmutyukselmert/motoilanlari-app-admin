@@ -2,7 +2,7 @@
 
 import {useEffect, useRef, useState} from "react";
 import { auth } from "@/lib/firebaseConfig"; // Firebase Auth'u buradan al
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut, getAuth } from "firebase/auth";
 import {usePathname, useRouter} from "next/navigation";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faList, faUser} from "@fortawesome/free-solid-svg-icons";
@@ -11,7 +11,9 @@ export default function AdminHeader({ toggleSidebar }: { toggleSidebar: () => vo
     const pathname = usePathname();
     const router = useRouter();
 
-    const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [userName, setUserName] = useState<string | null>(null);
+    const [uid, setUid] = useState<string | null>(null);
+
     const [menuOpen, setMenuOpen] = useState(false); // Menü açık/kapalı durumunu tutacak state
     const menuRef = useRef<HTMLDivElement>(null); // Menü için referans
     const buttonRef = useRef<HTMLButtonElement>(null); // Buton için referans
@@ -19,7 +21,13 @@ export default function AdminHeader({ toggleSidebar }: { toggleSidebar: () => vo
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setUserEmail(user?.email || null);
+            setUid(user?.uid || null);
+
+            if(user?.email && user?.email.length >= 3){
+                setUserName(user?.email.split("@")[0]);
+            } else if( user?.phoneNumber && user?.phoneNumber?.length >= 10 ){
+                setUserName(user?.phoneNumber);
+            }
         });
 
         return () => unsubscribe();
@@ -30,7 +38,7 @@ export default function AdminHeader({ toggleSidebar }: { toggleSidebar: () => vo
             await signOut(auth);
             document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; // Çerezi sil
             document.location.reload();
-            //router.push("/admin/login");
+            router.push("/admin/login");
         } catch (error) {
             console.error("Çıkış hatası:", error);
         }
@@ -95,15 +103,17 @@ export default function AdminHeader({ toggleSidebar }: { toggleSidebar: () => vo
                 <h1 className="text-lg font-bold">{title}</h1>
             </div>
             <div className="absolute right-6 z-10">
-                {userEmail ? (
+                {getAuth().currentUser ? (
                     <div ref={menuAreaRef}>
                         <button
                             ref={buttonRef}
                             onClick={() => setMenuOpen((prev) => !prev)} // Menü durumunu değiştir
                             className="bg-gray-700 px-2 py-1 rounded focus:outline-none"
+                            title={uid || ''}
                         >
                             <FontAwesomeIcon icon={faUser} className={'mr-1'} />
-                            {window.innerWidth <= 768 ? userEmail?.split("@")[0] : 'Hoşgeldin, ' + userEmail}
+                            {window.innerWidth <= 768 ? userName :
+                                    'Hoşgeldin, ' + userName }
                         </button>
                         {/* Menü */}
                         {menuOpen && (

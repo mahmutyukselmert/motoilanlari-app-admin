@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Image from 'next/image';
 import { db } from "@/lib/firebaseConfig";
 import {collection, getDocs, query, updateDoc, doc, orderBy, limit, startAfter, Timestamp, where} from "firebase/firestore";
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {faSearch, faChevronDown, faSort, faSortUp, faSortDown} from '@fortawesome/free-solid-svg-icons';
+import {faSearch, faChevronDown, faSort, faSortUp, faSortDown, faEdit} from '@fortawesome/free-solid-svg-icons';
 
 import Modal from "./AdModal";
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface Ad {
     id: string;
@@ -18,6 +19,7 @@ interface Ad {
     createdAt: Timestamp;
     status: "publish" | "pending" | "rejected" | "draft";
     brand: string;
+    model: string;
     city: string;
     modelYear: number;
     enginePower: number;
@@ -44,6 +46,17 @@ export default function AdsList() {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedAdId, setSelectedAdId] = useState<string>("");
+
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // URL'den status parametresini al ve filtre olarak ayarla
+    useEffect(() => {
+        const statusParam = searchParams.get('status');
+        if (statusParam) {
+            setStatusFilter(statusParam);
+        }
+    }, [searchParams]);
 
     // Cihaz tipini kontrol et
     useEffect(() => {
@@ -73,12 +86,7 @@ export default function AdsList() {
     };
 
     // **İlanları getir**
-    useEffect(() => {
-        fetchAds();
-    }, [statusFilter, sortField, sortDirection, pageSize]);
-
-    // **İlanları getir**
-    const fetchAds = async () => {
+    const fetchAds = useCallback(async () => {
         setLoading(true);
         try {
             const adsRef = collection(db, "Ads");
@@ -106,7 +114,11 @@ export default function AdsList() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [statusFilter, sortField, sortDirection, pageSize]);
+    
+    useEffect(() => {
+        fetchAds();
+    }, [fetchAds]);
 
     // **Daha fazla ilan yükleme fonksiyonu**
     const loadMoreAds = async () => {
@@ -249,18 +261,55 @@ export default function AdsList() {
         if (searchTerm === "") return true;
         
         const searchLower = searchTerm.toLowerCase();
-        return (
-            ad.title.toLowerCase().includes(searchLower) ||
-            ad.brand.toLowerCase().includes(searchLower) ||
-            ad.city.toLowerCase().includes(searchLower) ||
-            ad.description.toLowerCase().includes(searchLower)
+        // Arama için kullanılacak birleşik metin - başlık, marka ve model bilgilerini içerir
+        const searchableText = (
+            ad.title.toLowerCase() + " " + 
+            ad.brand.toLowerCase() + " " + 
+            (ad.model ? ad.model.toLowerCase() : "") + " " +
+            ad.city.toLowerCase() + " " +
+            ad.description.toLowerCase()
         );
+        
+        return searchableText.includes(searchLower);
+    });
+
+    // Client-side sıralama fonksiyonu - data-price attribute'unu kullanarak
+    const sortedAds = [...filteredAds].sort((a, b) => {
+        if (sortField === "price") {
+            // Price için sıralama
+            const priceA = a.price;
+            const priceB = b.price;
+            
+            if (sortDirection === "asc") {
+                return priceA - priceB;
+            } else {
+                return priceB - priceA;
+            }
+        } else if (sortField === "createdAt") {
+            // Tarih için sıralama
+            const dateA = a.createdAt.toDate().getTime();
+            const dateB = b.createdAt.toDate().getTime();
+            
+            if (sortDirection === "asc") {
+                return dateA - dateB;
+            } else {
+                return dateB - dateA;
+            }
+        }
+        return 0;
     });
 
     // Status filtre fonksiyonu
     const handleStatusFilter = (status: string) => {
         setStatusFilter(status);
         setLastDoc(null); // Filtre değiştiğinde cursor'u sıfırla
+        
+        // URL'i güncelle
+        if (status) {
+            router.push(`/admin/ads?status=${status}`);
+        } else {
+            router.push('/admin/ads');
+        }
     };
 
     // Sıralama ikonu
@@ -284,11 +333,13 @@ export default function AdsList() {
     if (loading && ads.length === 0) return <p className="text-center">İlanlar yükleniyor...</p>;
 
     // URL'leri kontrol etmek için
+    /*
     filteredAds.forEach(ad => {
         console.log('Ad ID:', ad.id);
         console.log('thumbnailUrl:', ad.thumbnailUrl);
         console.log('photoUrls:', JSON.stringify(ad.photoUrls));
     });
+    */
 
     return (
         <div className="p-0">
@@ -341,7 +392,9 @@ export default function AdsList() {
                     <thead>
                     <tr className="bg-gray-100">
                         <th className="px-4 py-2 border">Foto</th>
-                        <th className="px-4 py-2 border">Başlık</th>
+                        <th className="px-4 py-2 border">
+                            Başlık
+                        </th>
                         <th className="px-4 py-2 border cursor-pointer" onClick={() => handleSort("price")}>
                             Fiyat {getSortIcon("price")}
                         </th>
@@ -354,7 +407,7 @@ export default function AdsList() {
                     </tr>
                     </thead>
                     <tbody>
-                    {filteredAds.map((ad) => (
+                    {sortedAds.map((ad) => (
                         <tr key={ad.id} className="text-center">
                             <td className="px-1 py-1 border text-center justify-center flex">
                                 <Image 
@@ -365,8 +418,17 @@ export default function AdsList() {
                                   width={200} 
                                 />
                             </td>
-                            <td className="px-4 py-2 border">{ad.title}</td>
-                            <td className="px-4 py-2 border">{ad.price} TL</td>
+                            <td className="px-4 py-2 border" data-name={ad.title + " " + ad.brand + " " + ad.model}>
+                                <span className="text-gray-800 text-sm">
+                                {ad.title.length > 50 ? ad.title.substring(0, 50) + '...' : ad.title}
+                                </span>
+                                <span className="text-gray-800 text-xs block">
+                                    <b>Marka:</b> {ad.brand} - <b>Model:</b> {ad.model}
+                                </span>
+                            </td>
+                            <td className="px-4 py-2 border" data-price={ad.price}>
+                                { ad.price.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0 }).replace("₺", "") + "₺" }
+                            </td>
                             <td className="px-4 py-2 border">
                                 {formatDate(ad.createdAt)}
                             </td>
@@ -381,7 +443,6 @@ export default function AdsList() {
                                     <div>
                                         <button type="button" 
                                             onClick={() => {
-                                                // Dropdown menü açma/kapama
                                                 const dropdowns = document.querySelectorAll('.status-dropdown');
                                                 dropdowns.forEach(dropdown => {
                                                     if (dropdown.id !== `dropdown-${ad.id}`) {
@@ -390,11 +451,12 @@ export default function AdsList() {
                                                 });
                                                 document.getElementById(`dropdown-${ad.id}`)?.classList.toggle('hidden');
                                             }}
-                                            className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+                                            className="w-16 inline-flex justify-between align-center items-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
                                             id={`dropdown-button-${ad.id}`}
                                             aria-expanded="true" aria-haspopup="true">
-                                            Durum Değiştir
-                                            <FontAwesomeIcon icon={faChevronDown} className="ml-2 h-5 w-5" />
+                                            <FontAwesomeIcon icon={faEdit} className="mr-2 h-4 w-4" />
+                                            Güncelle
+                                            <FontAwesomeIcon icon={faChevronDown} className="ml-1 h-4 w-4" />
                                         </button>
                                     </div>
                                     <div className="status-dropdown hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10" 
@@ -452,9 +514,9 @@ export default function AdsList() {
                             <td className="px-4 py-2 border">
                                 <button
                                     onClick={() => openModal(ad.id)}
-                                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                                    className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600"
                                 >
-                                    <FontAwesomeIcon icon={faSearch}></FontAwesomeIcon>
+                                    <FontAwesomeIcon icon={faSearch} size="sm"></FontAwesomeIcon>
                                 </button>
                             </td>
                         </tr>
@@ -464,14 +526,21 @@ export default function AdsList() {
 
                 {/* Küçük ekranlarda kart görünümü */}
                 <div className="md:hidden space-y-4">
-                    {filteredAds.map((ad) => (
+                    {sortedAds.map((ad) => (
                         <div key={ad.id} className="bg-gray-100 p-4 rounded shadow">
                             <div className="flex items-center space-x-4">
                                 <Image src={getValidImageUrl(ad.thumbnailUrl || (ad.photoUrls && ad.photoUrls.length > 0 ? ad.photoUrls[0] : null))} alt={ad.title} className="w-20 h-20 object-cover rounded" width={125} height={125} />
                                 <div className="flex-1">
-                                    <h3 className="text-lg font-bold">{ad.title}</h3>
-                                    <p className="text-gray-700">{ad.price} TL</p>
-                                    <p className="text-sm text-gray-500">{formatDate(ad.createdAt)}</p>
+                                    <h6 className="text-sm font-bold">{ad.title.length > 40 ? ad.title.substring(0, 40) + '...' : ad.title}</h6>
+                                    <span className="text-gray-800 text-xs block">
+                                        <b>Marka:</b> {ad.brand} | <b>Model:</b> {ad.model}
+                                    </span>
+                                    <p className="text-gray-700 font-bold text-sm mt-1">
+                                        { ad.price.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0 }).replace("₺", "") + "₺" }
+                                    </p>
+                                    <p className="text-xs text-gray-500 flex justify-end">
+                                        {formatDate(ad.createdAt)}
+                                    </p>
                                 </div>
                             </div>
                             <div className="flex justify-between items-center mt-4">
