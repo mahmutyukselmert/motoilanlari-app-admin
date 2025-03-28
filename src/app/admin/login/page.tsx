@@ -1,17 +1,77 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebaseConfig";
+import { signInWithEmailAndPassword, getAuth } from "firebase/auth";
+//import { auth } from "@/lib/firebaseConfig";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie"; // js-cookie kütüphanesini kullanıyoruz.
+//import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+//import { db } from "@/lib/firebaseConfig";
 
 export default function Login() {
+
+    //const [uid, setUid] = useState<string | null>(null);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+
+    const auth = getAuth();
+
+    /*
+    const formatPhoneNumber = (phone: string): string => {
+        if (!phone.startsWith('+')) {
+            return phone.startsWith('0') 
+                ? '+90 ' + phone.substring(1) 
+                : '+90 ' + phone;
+        }
+        return phone;
+    };
+
+    const handleSmsLogin = async () => {
+        // Telefon numarasını uluslararası formata çevir
+        const phoneNumber = formatPhoneNumber(email);
+        
+        console.log("Telefon numarası:", phoneNumber);
+
+        // Telefon numarasına göre sorgulama
+        const q = query(
+            collection(db, "Users"), 
+            where("phone", "==", phoneNumber)
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            console.log("Telefon numarası ile kayıtlı kullanıcı bulunamadı!");
+        } else {
+            querySnapshot.forEach((doc) => {
+                const userData = doc.data();
+                console.log("Kullanıcı UID:", doc.id);  // UID burada doc.id olarak gelir
+                setUid(doc.id);
+
+                // Kullanıcı UID'sini çerezlere kaydet
+                if (password == '733200') {
+                    const token = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL2lkZW50aXR5dG9vbGtpdC5nb29nbGVhcGlzLmNvbS9nb29nbGUuaWRlbnRpdHkuaWRlbnRpdHl0b29sa2l0LnYxLklkZW50aXR5VG9vbGtpdCIsImlhdCI6MTc0MzEzNDEzNywiZXhwIjoxNzQzMTM3NzM3LCJpc3MiOiJmaXJlYmFzZS1hZG1pbnNkay0yMTNhd0Btb3RvaWxhbmxhcmktZjgzZDMuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJzdWIiOiJmaXJlYmFzZS1hZG1pbnNkay0yMTNhd0Btb3RvaWxhbmxhcmktZjgzZDMuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJ1aWQiOiJqU1lJOVg4T2pZWjNIa1VwNUpqazkzT0pLVGIyIn0.arzk9OVDRVSmCpTC_woGki_lZIqH8YhSk41jv-e0yLxO6o4wYbkE2wiaaCtELets0fZBdxS5XQXFsPIcTDhE-C3xeiuCCKTQhZ3MIrGK1lyWjWfGJKQYtrJa3g64HinyXu4FpUjSyt3hPvVWqcDX52nrYE8NVfuEgNyD4bCcczHv1dQGPneHSm4A0f4cvvOBICpSLUz8qh757pQxNMDTGhgVJpZ7-Vi6f3uKC-ImIelCpCuV_CXuw4Tw-xOw5hVH_QDKplTfOBtDAD6-H5ECB0DS6hFO-NJQnv6fpCjGt1DqYtXB0YcRunCO2luUpZkF1mfq3Q90elY3BPb4x7ScjQ';
+                    const auth = getAuth();
+                    signInWithCustomToken(auth, token)
+                    .then((userCredential) => {
+                        // Signed in
+                        const user = userCredential.user;
+                        console.log("Giriş başarılı!", user);
+                        Cookies.set("authToken", token, { expires: 1 });
+                        // ...
+                    })
+                    .catch((error) => {
+                        const errorCode = error.code;
+                        const errorMessage = error.message;
+                        console.log("Giriş hatası:", errorCode, errorMessage);
+                    });
+                }
+            });
+        }
+    }
+    */
 
     const handleLogin = async () => {
         setLoading(true);
@@ -55,6 +115,7 @@ export default function Login() {
                 >
                     {loading ? "Yükleniyor..." : "Giriş Yap"}
                 </button>
+                <div id="recaptcha-container"></div>
             </div>
             <footer className="p-5">
                 <b>Motoilanlari</b> Yönetim Paneli | <b>Powered by: </b>

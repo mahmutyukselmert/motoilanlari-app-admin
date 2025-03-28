@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import Image from 'next/image';
 import { db } from "@/lib/firebaseConfig";
-import { doc, getDoc, Timestamp } from "firebase/firestore";
-import {faTimes} from "@fortawesome/free-solid-svg-icons";
+import { doc, getDoc, Timestamp, updateDoc, deleteDoc } from "firebase/firestore";
+import {faCopy, faTimes} from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import { getStorage, ref, deleteObject } from "firebase/storage";
 
 interface ModalProps {
     isOpen: boolean;
@@ -41,6 +42,7 @@ interface Ad {
     hasTradeIn: boolean;
     hasDamage: boolean;
     isNumberView: boolean;
+    deletedAt?: Timestamp;
 }
 
 const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
@@ -58,6 +60,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                     const adDoc = await getDoc(adRef);
                     if (adDoc.exists()) {
                         const adData = adDoc.data() as Ad;
+                        adData.id = adId;
                         setAdDetails(adData);
 
                         // İlanı paylaşan kullanıcının bilgilerini fetch et
@@ -70,6 +73,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                         }
                     } else {
                         console.error("İlan bulunamadı");
+                        closeModal(); // İlan bulunamadığında modalı kapat
                     }
                 } catch (error) {
                     console.error("İlan detayları alınırken hata oluştu:", error);
@@ -78,7 +82,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
 
             fetchAdDetails();
         }
-    }, [isOpen, adId]);
+    }, [isOpen, adId, closeModal]);
 
     // Eğer adDetails mevcutsa ilk fotoğrafı seç
     useEffect(() => {
@@ -98,6 +102,27 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
             return '/placeholder.jpg';
         }
         return url;
+    };
+
+    const handleCopyAdLink = () => {
+        try {
+            // Construct the correct URL for the ad
+            const baseUrl = window.location.origin;
+            const adUrl = `${baseUrl}/admin/ads/${adId}`;
+            
+            // Fallback copy method using a temporary input element
+            const tempInput = document.createElement('input');
+            tempInput.value = adUrl;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            
+            //alert('İlan linki kopyalandı!');
+        } catch (error) {
+            console.error('Kopyalama hatası:', error);
+            alert('Kopyalama işlemi başarısız oldu!');
+        }
     };
 
     if (!isOpen || !adDetails) return null; // Modal açık değilse veya adDetails yüklenmemişse render etmiyoruz
@@ -122,17 +147,105 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
         }); // Tarihi formatla
     };
 
+    const handleDeleteAd = async (adId: string) => {
+        try {
+            console.log("İlan silme işlemi başlatılıyor...");
+            console.log("İlan ID:", adId);
+            const adRef = doc(db, "Ads", adId);
+            const adDoc = await getDoc(adRef);
+            
+            if (adDoc.exists()) {
+                const adData = adDoc.data();
+                
+                // İlanı geçici sil
+                await updateDoc(adRef, {
+                    deletedAt: Timestamp.now()
+                });
+                
+                // Silinecek tüm fotoğraf URL'lerini topla
+                const photoUrls: string[] = [];
+                
+                // photoUrls array'ini kontrol et ve ekle
+                if (adData.photoUrls && Array.isArray(adData.photoUrls) && adData.photoUrls.length > 0) {
+                    photoUrls.push(...adData.photoUrls);
+                }
+                
+                // thumbnailUrl'i kontrol et ve ekle
+                if (adData.thumbnailUrl && typeof adData.thumbnailUrl === 'string') {
+                    photoUrls.push(adData.thumbnailUrl);
+                }
+                
+                console.log(`Toplam ${photoUrls.length} fotoğraf silinecek`);
+                
+                if (photoUrls.length === 0) {
+                    // Fotoğraf yoksa doğrudan ilanı sil
+                    console.log("Silinecek fotoğraf bulunmadı, ilan doğrudan siliniyor...");
+                    await deleteDoc(adRef);
+                    closeModal();
+                    return;
+                }
+                
+                // Tüm fotoğraflar silinene kadar beklemek için Promise.all kullanıyoruz
+                const deletePromises = photoUrls.map(async (url: string) => {
+                    if (!url || typeof url !== 'string' || url.trim() === '' || url.startsWith('file://') ) {
+                        console.log("Geçersiz URL, atlanıyor:", url);
+                        return Promise.resolve(); // Geçersiz URL'leri atla
+                    }
+                    
+                    console.log("Silinecek fotoğraf URL'si:", url);         
+                    const storage = getStorage();
+                    
+                    try {
+                        const desertRef = ref(storage, url);
+                        console.log("Fotoğraf silme işlemi başlatılıyor...: " + desertRef.fullPath);
+                        await deleteObject(desertRef);
+                        console.log("Fotoğraf silme işlemi tamamlandı.");
+                        return Promise.resolve();
+                    } catch (error) {
+                        console.error("Fotoğraf silme hatası:", error);
+                        return Promise.resolve(); // Hata olsa bile devam et
+                    }
+                });
+                
+                // Tüm fotoğraflar silinene kadar bekle
+                await Promise.all(deletePromises);
+                console.log("Tüm fotoğraflar silindi, şimdi ilan completamente siliniyor...");
+                
+                // İlanı tamamen sil
+                await deleteDoc(adRef);
+                console.log("İlan başarıyla silindi.");
+
+            } else {
+                //console.error("İlan bulunamadı!");
+                closeModal(); // İlan bulunamadığında modalı kapat
+            }
+
+            closeModal();
+        } catch (error) {
+            console.error("İlan silme hatası:", error);
+        }
+    };
+
     return (
-        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white md:rounded-lg shadow-lg w-full h-full max-w-7xl overflow-y-auto">
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center w-full z-50">
+            <div className="bg-white md:rounded-lg shadow-lg w-full h-full overflow-y-auto">
                 <div className="bg-gray-600 px-4 py-2 text-white flex justify-between items-center content-center mb-2">
                     <h2 className="text-xl font-bold">{adDetails.title}</h2>
-                    <button
-                        onClick={closeModal}
-                        className="bg-red-500 text-xl text-white px-3 py-1 rounded-lg hover:bg-red-600"
-                    >
-                        <FontAwesomeIcon icon={faTimes}></FontAwesomeIcon>
-                    </button>
+                    <div>
+                        <button
+                            onClick={handleCopyAdLink}
+                            className="text-xl text-white px-3 py-1 rounded-lg mr-1 hover:bg-gray-700"
+                            title="İlan linkini kopyala"
+                        >
+                            <FontAwesomeIcon icon={faCopy}/>
+                        </button>
+                        <button
+                            onClick={closeModal}
+                            className="bg-red-500 text-xl text-white px-3 py-1 rounded-lg hover:bg-red-600"
+                        >
+                            <FontAwesomeIcon icon={faTimes}></FontAwesomeIcon>
+                        </button>
+                    </div>
                 </div>
                 <div className="flex flex-col md:flex-row px-4 py-2 mt-2">
                     {/* Sol taraf büyük görsel */}
@@ -180,7 +293,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                                 )}
                             </div>
                         )}
+
                         {/* İlan bilgileri */}
+                        <p className={'mb-1'}>
+                            <strong>Yayınlanma Tarihi:</strong> {adDetails.createdAt ? formatDate(adDetails.createdAt) : 'Yayınlanmamış'}
+                        </p>
                         <p className={'mb-1'}><strong>Marka:</strong> {adDetails.brand}</p>
                         <p className={'mb-1'}><strong>Model:</strong> {adDetails.modelYear}</p>
                         <p className={'mb-1'}><strong>Fiyat:</strong> {formatPrice(adDetails.price)} TL</p>
@@ -193,20 +310,37 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                         <p className={'mb-1'}><strong>Takas:</strong> {adDetails.hasTradeIn ? 'Var' : 'Yok'}</p>
                         <p className={'mb-1'}><strong>Şehir:</strong> {adDetails.city}</p>
                         <p className={'mb-1'}><strong>Telefon Numarası Görünürlük Durumu:</strong> {adDetails.isNumberView == false ? 'Gizli' : 'Açık' }</p>
+                        <p className={'mb-1'}><strong>İlan ID:</strong> {adDetails.id}</p>
                         <p className={'mb-1'}><strong>Açıklama:</strong> {adDetails.description}</p>
+                        
                         <p className={'mb-1'}>
                             <strong>Durum: </strong>
                             <span
-                                className={`px-2 py-1 rounded text-white ${adDetails.status === "publish" ? "bg-green-500" : adDetails.status === "pending" ? "bg-yellow-500" : adDetails.status === "draft" ? "bg-gray-500" : "bg-red-500"}`}>
+                                className={`px-1 py-1 text-xs rounded text-white ${adDetails.status === "publish" ? "bg-green-500" : adDetails.status === "pending" ? "bg-yellow-500" : adDetails.status === "draft" ? "bg-gray-500" : "bg-red-500"}`}>
                                 {adDetails.status === "publish" ? "Yayında" : adDetails.status === "pending" ? "Bekliyor" : adDetails.status === "draft" ? "Taslak" : "Reddedildi"}
                             </span>
                         </p>
+
+                        { adDetails.deletedAt ? (
+                            <p className={'mb-1'}><strong>İlan Silme Tarihi:</strong> 
+                                {adDetails.deletedAt ? formatDate(adDetails.deletedAt) : 'Yok'}
+                            </p>
+                        ) : null }
+
                     </div>
                 </div>
-                <div className="mt-4 px-4 py-2 flex justify-end">
+                <div className="mt-4 px-4 py-2 flex justify-between">
+                    <button
+                        onClick={() => 
+                            confirm('İlanı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!') && handleDeleteAd(adDetails.id)
+                        }
+                        className="bg-red-500 text-white px-4 py-2 rounded-md mr-2 hover:bg-red-600"
+                    >
+                        İlanı Sil
+                    </button>
                     <button
                         onClick={closeModal}
-                        className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+                        className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
                     >
                         Kapat
                     </button>

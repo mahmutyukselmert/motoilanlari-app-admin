@@ -15,7 +15,7 @@ export default function AdminSidebar({ isOpen, toggleSidebar }: { isOpen: boolea
 
     return (
         <aside
-            className={`fixed top-0 left-0 w-64 bg-gray-900 text-white h-auto p-5 z-50 transform ${
+            className={`fixed top-0 left-0 w-63 bg-gray-900 text-white h-auto p-5 z-50 transform ${
                 isOpen ? "h-full translate-x-0 w-full" : "-translate-x-full"
             } transition-transform duration-300 lg:relative lg:translate-x-0`}
         >
