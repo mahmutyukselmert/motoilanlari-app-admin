@@ -17,7 +17,8 @@ interface Ad {
     price: number;
     photoUrls: string[];
     createdAt: Timestamp;
-    status: "publish" | "pending" | "rejected" | "draft";
+    deletedAt: Timestamp | null;
+    status: "publish" | "pending" | "rejected" | "draft" | "delete";
     brand: string;
     model: string;
     city: string;
@@ -153,7 +154,7 @@ export default function AdsList() {
         }
     };
 
-    const updateStatus = async (id: string, newStatus: "publish" | "pending" | "rejected" | "draft") => {
+    const updateStatus = async (id: string, newStatus: "publish" | "pending" | "rejected" | "draft" | "delete") => {
         try {
             const adRef = doc(db, "Ads", id);
             await updateDoc(adRef, { status: newStatus });
@@ -380,6 +381,7 @@ export default function AdsList() {
                         <option value="pending">Onay Bekliyor</option>
                         <option value="rejected">Reddedildi</option>
                         <option value="draft">Taslak</option>
+                        <option value="delete">Silinmiş</option>
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                         <FontAwesomeIcon icon={faChevronDown} />
@@ -434,8 +436,23 @@ export default function AdsList() {
                             </td>
                             <td className="px-4 py-2 border">
                                 <span
-                                    className={`px-2 py-1 rounded text-white ${ad.status === "publish" ? "bg-green-500" : ad.status === "pending" ? "bg-yellow-500" : ad.status === "draft" ? "bg-gray-500" : "bg-red-500"}`}>
-                                    {ad.status === "publish" ? "Yayında" : ad.status === "pending" ? "Bekliyor" : ad.status === "draft" ? "Taslak" : "Reddedildi"}
+                                    className={`px-2 py-1 rounded text-white ${
+                                        ad.status === "publish" ? "bg-green-500" :
+                                        ad.status === "pending" ? "bg-yellow-500" :
+                                        ad.status === "draft" ? "bg-gray-500" :
+                                        ad.status === "rejected" ? "bg-red-500" :
+                                        ad.status === "delete" || ad.deletedAt != null ? "bg-red-600" :
+                                        "bg-gray-900" // Varsayılan durum eklendi
+                                    }`}
+                                >
+                                    {
+                                        ad.status === "publish" ? "Yayında" :
+                                        ad.status === "pending" ? "Bekliyor" :
+                                        ad.status === "draft" ? "Taslak" :
+                                        ad.status === "rejected" ? "Reddedildi" :
+                                        ad.status === "delete" || ad.deletedAt != null ? "Silinmiş" :
+                                        "Bilinmiyor" // Varsayılan durum eklendi
+                                    }
                                 </span>
                             </td>
                             <td className="px-2 py-1 border">
