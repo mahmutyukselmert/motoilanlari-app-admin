@@ -243,7 +243,16 @@ export default function AdsList() {
             
             // Status filtresi ekle
             if (statusFilter) {
-                adsQuery = query(adsQuery, where("status", "==", statusFilter));
+                if (statusFilter === "delete") { // Add this block
+                    adsQuery = query(
+                        adsQuery, or(
+                            where("status", "==", "delete"),
+                            where("deletedAt", "!=", null)
+                        )
+                    );
+                } else {
+                    adsQuery = query(adsQuery, where("status", "==", statusFilter));
+                }
             }
             
             // Sıralama ekle

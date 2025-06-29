@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import Image from 'next/image';
 import { db } from "@/lib/firebaseConfig";
 import { doc, getDoc, Timestamp, updateDoc, deleteDoc } from "firebase/firestore";
-import {faCopy, faTimes} from "@fortawesome/free-solid-svg-icons";
-import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import { getDatabase, ref as dbRef, remove, get } from "firebase/database";
+import { faCopy, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { getStorage, ref, deleteObject } from "firebase/storage";
+
 
 interface ModalProps {
     isOpen: boolean;
@@ -88,7 +90,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
     useEffect(() => {
         setSelectedImage('/placeholder.jpg');
         if (adDetails && adDetails.photoUrls?.length >= 1) {
-            if( adDetails.photoUrls[0] != null && adDetails.photoUrls[0].length > 10 ) {
+            if (adDetails.photoUrls[0] != null && adDetails.photoUrls[0].length > 10) {
                 setSelectedImage(adDetails.photoUrls[0]);
             }
         }
@@ -109,7 +111,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
             // Construct the correct URL for the ad
             const baseUrl = window.location.origin;
             const adUrl = `${baseUrl}/admin/ads/${adId}`;
-            
+
             // Fallback copy method using a temporary input element
             const tempInput = document.createElement('input');
             tempInput.value = adUrl;
@@ -117,7 +119,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
             tempInput.select();
             document.execCommand('copy');
             document.body.removeChild(tempInput);
-            
+
             //alert('İlan linki kopyalandı!');
         } catch (error) {
             console.error('Kopyalama hatası:', error);
@@ -153,30 +155,30 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
             console.log("İlan ID:", adId);
             const adRef = doc(db, "Ads", adId);
             const adDoc = await getDoc(adRef);
-            
+
             if (adDoc.exists()) {
                 const adData = adDoc.data();
-                
+
                 // İlanı geçici sil
                 await updateDoc(adRef, {
                     deletedAt: Timestamp.now()
                 });
-                
+
                 // Silinecek tüm fotoğraf URL'lerini topla
                 const photoUrls: string[] = [];
-                
+
                 // photoUrls array'ini kontrol et ve ekle
                 if (adData.photoUrls && Array.isArray(adData.photoUrls) && adData.photoUrls.length > 0) {
                     photoUrls.push(...adData.photoUrls);
                 }
-                
+
                 // thumbnailUrl'i kontrol et ve ekle
                 if (adData.thumbnailUrl && typeof adData.thumbnailUrl === 'string') {
                     photoUrls.push(adData.thumbnailUrl);
                 }
-                
+
                 console.log(`Toplam ${photoUrls.length} fotoğraf silinecek`);
-                
+
                 if (photoUrls.length === 0) {
                     // Fotoğraf yoksa doğrudan ilanı sil
                     console.log("Silinecek fotoğraf bulunmadı, ilan doğrudan siliniyor...");
@@ -184,17 +186,17 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                     closeModal();
                     return;
                 }
-                
+
                 // Tüm fotoğraflar silinene kadar beklemek için Promise.all kullanıyoruz
                 const deletePromises = photoUrls.map(async (url: string) => {
-                    if (!url || typeof url !== 'string' || url.trim() === '' || url.startsWith('file://') ) {
+                    if (!url || typeof url !== 'string' || url.trim() === '' || url.startsWith('file://')) {
                         console.log("Geçersiz URL, atlanıyor:", url);
                         return Promise.resolve(); // Geçersiz URL'leri atla
                     }
-                    
-                    console.log("Silinecek fotoğraf URL'si:", url);         
+
+                    console.log("Silinecek fotoğraf URL'si:", url);
                     const storage = getStorage();
-                    
+
                     try {
                         const desertRef = ref(storage, url);
                         console.log("Fotoğraf silme işlemi başlatılıyor...: " + desertRef.fullPath);
@@ -206,12 +208,42 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                         return Promise.resolve(); // Hata olsa bile devam et
                     }
                 });
-                
+
                 // Tüm fotoğraflar silinene kadar bekle
                 await Promise.all(deletePromises);
-                console.log("Tüm fotoğraflar silindi, şimdi ilan completamente siliniyor...");
-                
-                // İlanı tamamen sil
+                console.log("Tüm fotoğraflar silindi, şimdi ilan mesajları siliniyor...");
+
+                // İlana ait chat yani mesaj verisini de komple sil
+                const realtimeDb = getDatabase(); // Realtime DB instance
+                const chatNodeRef = dbRef(realtimeDb, `chats/${adId}`);
+                const chatSnapshot = await get(chatNodeRef);
+
+                if (chatSnapshot.exists()) {
+                    const chatData = chatSnapshot.val();
+
+                    const deletePromises: Promise<void>[] = [];
+
+                    Object.keys(chatData).forEach((key) => {
+                        const [senderId, receiverId] = key.split("_");
+
+                        if (senderId && receiverId) {
+                            const senderMsgBoxRef = dbRef(realtimeDb, `messageBoxes/${senderId}/${adId}`);
+                            deletePromises.push(remove(senderMsgBoxRef));
+
+                            const receiverMsgBoxRef = dbRef(realtimeDb, `messageBoxes/${receiverId}/${adId}`);
+                            deletePromises.push(remove(receiverMsgBoxRef));
+                        }
+                    });
+
+                    deletePromises.push(remove(chatNodeRef));
+
+                    await Promise.all(deletePromises);
+                    console.log(`chats/${adId} ve ilgili tüm messageBoxes silindi.`);
+                } else {
+                    console.log(`chats/${adId} verisi bulunamadı.`);
+                }
+
+                // İlan ile ilgili her şey silindi artık ilanı tamamen silelim
                 await deleteDoc(adRef);
                 console.log("İlan başarıyla silindi.");
 
@@ -237,7 +269,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                             className="text-xl text-white px-3 py-1 rounded-lg mr-1 hover:bg-gray-700"
                             title="İlan linkini kopyala"
                         >
-                            <FontAwesomeIcon icon={faCopy}/>
+                            <FontAwesomeIcon icon={faCopy} />
                         </button>
                         <button
                             onClick={closeModal}
@@ -309,10 +341,10 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                         <p className={'mb-1'}><strong>Hasar Kaydı:</strong> {adDetails.hasDamage ? 'Var' : 'Yok'}</p>
                         <p className={'mb-1'}><strong>Takas:</strong> {adDetails.hasTradeIn ? 'Var' : 'Yok'}</p>
                         <p className={'mb-1'}><strong>Şehir:</strong> {adDetails.city}</p>
-                        <p className={'mb-1'}><strong>Telefon Numarası Görünürlük Durumu:</strong> {adDetails.isNumberView == false ? 'Gizli' : 'Açık' }</p>
+                        <p className={'mb-1'}><strong>Telefon Numarası Görünürlük Durumu:</strong> {adDetails.isNumberView == false ? 'Gizli' : 'Açık'}</p>
                         <p className={'mb-1'}><strong>İlan ID:</strong> {adDetails.id}</p>
                         <p className={'mb-1'}><strong>Açıklama:</strong> {adDetails.description}</p>
-                        
+
                         <p className={'mb-1'}>
                             <strong>Durum: </strong>
                             <span
@@ -321,17 +353,17 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                             </span>
                         </p>
 
-                        { adDetails.deletedAt ? (
-                            <p className={'mb-1'}><strong>İlan Silme Tarihi:</strong> 
+                        {adDetails.deletedAt ? (
+                            <p className={'mb-1'}><strong>İlan Silme Tarihi:</strong>
                                 {adDetails.deletedAt ? formatDate(adDetails.deletedAt) : 'Yok'}
                             </p>
-                        ) : null }
+                        ) : null}
 
                     </div>
                 </div>
                 <div className="mt-4 px-4 py-2 flex justify-between">
                     <button
-                        onClick={() => 
+                        onClick={() =>
                             confirm('İlanı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!') && handleDeleteAd(adDetails.id)
                         }
                         className="bg-red-500 text-white px-4 py-2 rounded-md mr-2 hover:bg-red-600"
