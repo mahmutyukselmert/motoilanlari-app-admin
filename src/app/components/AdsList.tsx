@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Image from 'next/image';
 import { db } from "@/lib/firebaseConfig";
-import {collection, getDocs, query, updateDoc, doc, orderBy, limit, startAfter, Timestamp, where} from "firebase/firestore";
+import {collection, getDocs, query, or, updateDoc, doc, orderBy, limit, startAfter, Timestamp, where} from "firebase/firestore";
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {faSearch, faChevronDown, faSort, faSortUp, faSortDown, faEdit} from '@fortawesome/free-solid-svg-icons';
@@ -95,7 +95,16 @@ export default function AdsList() {
             
             // Status filtresi ekle
             if (statusFilter) {
-                adsQuery = query(adsQuery, where("status", "==", statusFilter));
+                if (statusFilter === "delete") {
+                    adsQuery = query(
+                        adsQuery, or(
+                            where("status", "==", "delete"),
+                            where("deletedAt", "!=", null)
+                        )
+                    );
+                } else {
+                    adsQuery = query(adsQuery, where("status", "==", statusFilter));
+                }
             }
             
             // Sıralama ekle
@@ -132,7 +141,16 @@ export default function AdsList() {
             
             // Status filtresi ekle
             if (statusFilter) {
-                adsQuery = query(adsQuery, where("status", "==", statusFilter));
+                if (statusFilter === "delete") {
+                    adsQuery = query(
+                        adsQuery, or(
+                            where("status", "==", "delete"),
+                            where("deletedAt", "!=", null)
+                        )
+                    );
+                } else {
+                    adsQuery = query(adsQuery, where("status", "==", statusFilter));
+                }
             }
             
             // Sıralama ve pagination ekle
