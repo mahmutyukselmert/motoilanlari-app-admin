@@ -1,8 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+
 import { db } from "@/lib/firebaseConfig";
+import {
+    collection,
+    getDocs,
+    Timestamp,
+    query,
+    where,
+    updateDoc,
+    doc,
+} from "firebase/firestore";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faMotorcycle,
@@ -12,11 +22,12 @@ import {
     faPencilAlt,
     faBan,
     faUsers,
-    faUserPlus
+    faUserPlus,
+    faTimes
 } from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
 
-type AdStatus = 'pending' | 'publish' | 'draft' | 'rejected';
+type AdStatus = 'pending' | 'publish' | 'draft' | 'rejected' | 'delete';
 
 type AdStats = {
     total: number;
@@ -25,6 +36,7 @@ type AdStats = {
     draft: number;
     rejected: number;
     todayad: number;
+    delete: number;
 };
 
 type UserStats = {
@@ -43,7 +55,8 @@ export default function Dashboard() {
         publish: 0,
         draft: 0,
         rejected: 0,
-        todayad: 0
+        todayad: 0,
+        delete: 0
     });
 
     useEffect(() => {
@@ -82,7 +95,8 @@ export default function Dashboard() {
                 publish: 0,
                 draft: 0,
                 rejected: 0,
-                todayad: 0
+                todayad: 0,
+                delete: 0
             };
 
             // Count ads by status
@@ -91,7 +105,7 @@ export default function Dashboard() {
                 const status = adData.status as AdStatus;
 
                 // Count by status
-                if (status && ['pending', 'publish', 'draft', 'rejected'].includes(status)) {
+                if (status && ['pending', 'publish', 'draft', 'rejected', 'delete'].includes(status)) {
                     stats[status]++;
                 }
 
@@ -111,6 +125,43 @@ export default function Dashboard() {
 
         fetchCounts();
     }, []);
+
+    // Silinmiş ilanların status değerini 'delete' olarak güncelle
+    // Bu işlem sayfa yüklendiğinde otomatik olarak çalışır
+    useEffect(() => {
+        const updateDeletedAds = async () => {
+            try {
+                const adsRef = collection(db, "Ads");
+                const adsQuery = query(
+                    adsRef,
+                    where("deletedAt", ">", Timestamp.fromMillis(0)),
+                    where("status", "!=", "delete")
+                );
+                const snapshot = await getDocs(adsQuery);
+
+                if (snapshot.empty) {
+                    console.log("Güncellenecek kayıt yok.");
+                    return;
+                }
+
+                console.log(`${snapshot.size} kayıt bulundu. Güncelleniyor...`);
+
+                const updatePromises = snapshot.docs.map((docSnap) => {
+                    const adRef = doc(db, "Ads", docSnap.id);
+                    return updateDoc(adRef, { status: "delete" });
+                });
+
+                await Promise.all(updatePromises);
+
+                console.log(`Toplam ${snapshot.size} ilan 'delete' olarak güncellendi.`);
+            } catch (error) {
+                console.error("Silinmiş ilanları güncellerken hata oluştu:", error);
+            }
+        };
+
+        updateDeletedAds();
+    }, []);
+
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -190,6 +241,17 @@ export default function Dashboard() {
                     <p className="text-2xl">{adStats.rejected}</p>
                 </div>
             </Link>
+
+            <Link href="/admin/ads?status=delete" className="block">
+                <div className="bg-white p-6 rounded shadow text-center hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="flex justify-center mb-2 text-red-700">
+                        <FontAwesomeIcon icon={faTimes} size="2x" />
+                    </div>
+                    <h3 className="text-xl font-bold">Silinen İlan</h3>
+                    <p className="text-2xl">{adStats.delete}</p>
+                </div>
+            </Link>
         </div>
     );
+
 }
