@@ -1,6 +1,12 @@
 import {getApp, getApps, initializeApp} from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+
+import {
+    initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager,
+    CACHE_SIZE_UNLIMITED,
+  } from "firebase/firestore";
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -20,5 +26,13 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 // Firebase servislerini dışa aktar
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Firestore'u disk tabanlı kalıcı önbellek (persistence) ile birlikte başlatıyoruz (Güncel yöntem)
+export const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager(),
+    }),
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+});
+
 export default app;
