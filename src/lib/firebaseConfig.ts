@@ -1,13 +1,13 @@
-import {getApp, getApps, initializeApp} from "firebase/app";
+import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-
 import {
     initializeFirestore,
     persistentLocalCache,
     persistentMultipleTabManager,
     CACHE_SIZE_UNLIMITED,
-  } from "firebase/firestore";
+} from "firebase/firestore";
 
+// Your Firebase configuration object
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -17,22 +17,20 @@ const firebaseConfig = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-//const app = initializeApp(firebaseConfig);
-//export const auth = getAuth(app);
-//export const db = getFirestore(app);
-
-// Firebase App başlatma (Eğer yoksa başlat, varsa mevcut olanı kullan)
+// Initialize Firebase App (if not already initialized)
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// Firebase servislerini dışa aktar
+// Export Firebase services
 export const auth = getAuth(app);
 
-// Firestore'u disk tabanlı kalıcı önbellek (persistence) ile birlikte başlatıyoruz (Güncel yöntem)
+// Initialize Firestore with persistence using the updated method
+// The 'cacheSizeBytes' property is now correctly placed inside the persistentLocalCache object.
 export const db = initializeFirestore(app, {
     localCache: persistentLocalCache({
       tabManager: persistentMultipleTabManager(),
+      cacheSizeBytes: CACHE_SIZE_UNLIMITED,
     }),
-    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
 });
 
+// Export the main app instance
 export default app;
