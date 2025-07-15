@@ -588,8 +588,24 @@ export default function AdsList() {
                                 </div>
                             </div>
                             <div className="flex justify-between items-center mt-4">
-                                <span className={`px-2 py-1 rounded text-white ${ad.status === "publish" ? "bg-green-500" : ad.status === "pending" ? "bg-yellow-500" : ad.status === "draft" ? "bg-gray-500" : "bg-red-500"}`}>
-                                    {ad.status === "publish" ? "Yayında" : ad.status === "pending" ? "Bekliyor" : ad.status === "draft" ? "Taslak" : "Reddedildi"}
+                                <span
+                                    className={`px-2 py-1 rounded text-white ${
+                                        ad.status === "publish" ? "bg-green-500" :
+                                        ad.status === "pending" ? "bg-yellow-500" :
+                                        ad.status === "draft" ? "bg-gray-500" :
+                                        ad.status === "rejected" ? "bg-red-500" :
+                                        ad.status === "delete" || ad.deletedAt != null ? "bg-red-600" :
+                                        "bg-gray-900" // Varsayılan durum eklendi
+                                    }`}
+                                >
+                                    {
+                                        ad.status === "publish" ? "Yayında" :
+                                        ad.status === "pending" ? "Bekliyor" :
+                                        ad.status === "draft" ? "Taslak" :
+                                        ad.status === "rejected" ? "Reddedildi" :
+                                        ad.status === "delete" || ad.deletedAt != null ? "Silinmiş" :
+                                        "Bilinmiyor" // Varsayılan durum eklendi
+                                    }
                                 </span>
                                 <div className="flex space-x-2">
                                     <div className="relative inline-block text-left">
