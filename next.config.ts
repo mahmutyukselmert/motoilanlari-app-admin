@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
                 pathname: '/**',  // Pathname'ı yıldız (*) ile belirtmek tüm alt yolları kapsar
             },
         ],
+        minimumCacheTTL: 86400,
     },
 };
 

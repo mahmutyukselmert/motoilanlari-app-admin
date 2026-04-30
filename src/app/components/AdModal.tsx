@@ -6,6 +6,7 @@ import { getDatabase, ref as dbRef, remove, get } from "firebase/database";
 import { faCopy, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { getStorage, ref, deleteObject } from "firebase/storage";
+import Link from "next/link";
 
 
 interface ModalProps {
@@ -16,6 +17,7 @@ interface ModalProps {
 
 interface User {
     name?: string;
+    displayName?: string;
     email?: string;
     phone?: string;
     phoneNumber?: string;
@@ -52,6 +54,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
     const [userDetails, setUserDetails] = useState<User | null>(null);
 
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+    console.log("Modal açıldı, adId:", adId);
+    console.log("Modal açık Kullanıcı bilgileri: ", userDetails);
 
     // Ad detaylarını fetch et
     useEffect(() => {
@@ -258,6 +263,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
         }
     };
 
+    console.log(userDetails);
+
     return (
         <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center w-full z-50">
             <div className="bg-white md:rounded-lg shadow-lg w-full h-full overflow-y-auto">
@@ -309,10 +316,12 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
 
                     {/* Sağ tarafta ilan detayları */}
                     <div className="md:w-1/3 sm:w-full">
-                        {/* Kullanıcı bilgilerini buraya ekle */}
+                        {/* Kullanıcı bilgilerini buraya ekle */
+                            
+                        }
                         {userDetails && (
                             <div className="mb-4">
-                                <p><strong>Ad:</strong> {userDetails.name}</p>
+                                <p><strong>Ad:</strong> {userDetails.name || userDetails.displayName || '-' }</p>
                                 <p><strong>E-posta:</strong> {userDetails.email}</p>
                                 {userDetails.phoneNumber && (
                                     <p><strong>Telefon:</strong> {userDetails.phoneNumber}</p>
@@ -321,8 +330,14 @@ const Modal: React.FC<ModalProps> = ({ isOpen, closeModal, adId }) => {
                                     <p><strong>Telefon:</strong> {userDetails.phone}</p>
                                 )}
                                 {userDetails.createdAt && typeof userDetails.createdAt !== 'string' && (
-                                    <p><strong>Kayıt Tarihi</strong> {formatDate(userDetails.createdAt)}</p>
+                                    <p><strong>Kayıt Tarihi:</strong> {formatDate(userDetails.createdAt)}</p>
                                 )}
+                                <p>
+                                    <strong>Kullanıcı ID:</strong> 
+                                    <Link href={`/admin/ads/?user=${adDetails.userId}`} onClick={closeModal} className="text-blue-500">
+                                        {adDetails.userId}
+                                    </Link>
+                                </p>
                             </div>
                         )}
 

@@ -37,6 +37,7 @@ export default function AdsList() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("");
+    const [userFilter, setUserFilter] = useState<string>("");
     const [sortField, setSortField] = useState<SortField>("createdAt");
     const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
     const [isMobile, setIsMobile] = useState<boolean>(false);
@@ -59,6 +60,14 @@ export default function AdsList() {
         }
     }, [searchParams]);
 
+    // URL'den user= ile userId al ve filtre olarak ayarla
+    useEffect(() => {
+        const userIdParam = searchParams.get('user');
+        if (userIdParam) {
+            setUserFilter(userIdParam);
+        }
+    }, [searchParams]);
+    
     // Cihaz tipini kontrol et
     useEffect(() => {
         const checkDevice = () => {
@@ -106,6 +115,10 @@ export default function AdsList() {
                     adsQuery = query(adsQuery, where("status", "==", statusFilter));
                 }
             }
+
+            if (userFilter) {
+                adsQuery = query(adsQuery, where("userId", "==", userFilter));
+            }
             
             // Sıralama ekle
             adsQuery = query(adsQuery, orderBy(sortField, sortDirection), limit(pageSize));
@@ -124,7 +137,7 @@ export default function AdsList() {
         } finally {
             setLoading(false);
         }
-    }, [statusFilter, sortField, sortDirection, pageSize]);
+    }, [statusFilter, userFilter, sortField, sortDirection, pageSize]);
     
     useEffect(() => {
         fetchAds();
@@ -151,6 +164,10 @@ export default function AdsList() {
                 } else {
                     adsQuery = query(adsQuery, where("status", "==", statusFilter));
                 }
+            }
+
+            if (userFilter) {
+                adsQuery = query(adsQuery, where("userId", "==", userFilter));
             }
             
             // Sıralama ve pagination ekle
@@ -495,7 +512,7 @@ export default function AdsList() {
                                                 });
                                                 document.getElementById(`dropdown-${ad.id}`)?.classList.toggle('hidden');
                                             }}
-                                            className="w-16 inline-flex justify-between align-center items-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+                                            className="w-16 inline-flex justify-between align-center items-center md:w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
                                             id={`dropdown-button-${ad.id}`}
                                             aria-expanded="true" aria-haspopup="true">
                                             <FontAwesomeIcon icon={faEdit} className="mr-2 h-4 w-4" />
